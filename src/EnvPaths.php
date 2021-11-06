@@ -7,23 +7,61 @@ namespace Bgreenacre\EnvPaths;
 use ArrayAccess;
 use RuntimeException;
 
-final class EnvPaths implements ArrayAccess {
+/**
+ * @implements ArrayAccess<string, mixed>
+ */
+final class EnvPaths implements ArrayAccess
+{
 
+    /**
+     * Contains the User's ID
+     *
+     * @var string|int
+     */
     private $uid;
+
+    /**
+     * Optional namespace for paths
+     *
+     * @var string|null
+     */
     private $namespace;
-    private $shell = [];
+
+    /**
+     * User home directory
+     *
+     * @var string|null
+     */
+    private $home;
+
+    /**
+     * Container environment paths
+     *
+     * @var array<string, string|null>
+     */
     private $paths = [
-        'data': null,
-        'cache': null,
-        'config': null,
-        'log': null,
-        'temp': null,
+        'data'   => null,
+        'cache'  => null,
+        'config' => null,
+        'log'    => null,
+        'temp'   => null,
     ];
 
-    public function __construct($namespace = '', $suffix = '-php', $uid = null): void
+    /**
+     * Constrctor
+     *
+     * @param string|null $namespace
+     * @param string      $suffix
+     * @param int|null    $uid
+     */
+    public function __construct(string $namespace = null, string $suffix = '-php', int $uid = null)
     {
         $this->uid = $uid ?? posix_getuid();
-        $this->shell = posix_getpwuid($this->uid);
+        $shell = posix_getpwuid($this->uid);
+
+        if (is_array($shell) && array_key_exists('dir', $shell)) {
+            $this->home = $shell['dir'];
+        }
 
         if ($namespace) {
             $this->namespace = $namespace . $suffix;
@@ -32,37 +70,50 @@ final class EnvPaths implements ArrayAccess {
         $this->setPaths();
     }
 
+    /**
+     * join
+     *
+     * @param array<int, string|null|int>  $to_join
+     * @param string $sep
+     */
     private function join(array $to_join, string $sep = DIRECTORY_SEPARATOR): string
     {
         return array_reduce($to_join, fn($path, $part) => $part ? $path . $sep . $part : $path, '');
     }
 
+    /**
+     * Sets the paths
+     */
     private function setPaths(): void
     {
-        switch(PHP_OS_FAMILY)
-        {
+        switch (PHP_OS_FAMILY) {
             case 'Windows':
-                $app_data = getenv('APPDATA') ?? $this->join([ $shell['dir'], 'AppData', 'Roaming' ]);
-                $local_app_data = getenv('LOCALAPPDATA') ?? $this->join([ $shell['dir'], 'AppData', 'Local' ]);
+                $app_data = getenv('APPDATA') !== false
+                    ? getenv('APPDATA')
+                    : $this->join([ $this->home, 'AppData', 'Roaming' ]);
+
+                $local_app_data = getenv('LOCALAPPDATA') !== false
+                    ? getenv('LOCALAPPDATA')
+                    : $this->join([ $this->home, 'AppData', 'Local' ]);
 
                 $this->paths = [
-                    'data' => $this->join([ $local_app_data, $this->namespace, 'Data' ]),
-                    'cache' => $this->join([ $local_app_data, $this->namespace, 'Cache' ]),
+                    'data'   => $this->join([ $local_app_data, $this->namespace, 'Data' ]),
+                    'cache'  => $this->join([ $local_app_data, $this->namespace, 'Cache' ]),
                     'config' => $this->join([ $app_data, $this->namespace, 'Config' ]),
-                    'log' => $this->join([ $local_app_data, $this->namespace, 'Log' ]),
-                    'temp' => $this->join([ sys_get_temp_dir(), $this->namespace ]),
+                    'log'    => $this->join([ $local_app_data, $this->namespace, 'Log' ]),
+                    'temp'   => $this->join([ sys_get_temp_dir(), $this->namespace ]),
                 ];
 
                 break;
             case 'Darwin':
-                $prefix = $this->join([ $shell['dir'], 'Library' ]);
+                $prefix = $this->join([ $this->home, 'Library' ]);
 
                 $this->paths = [
-                    'data' => $this->join([ $prefix, 'Application Support', $this->namespace ]),
-                    'cache' => $this->join([ $prefix, 'Caches', $this->namespace ]),
+                    'data'   => $this->join([ $prefix, 'Application Support', $this->namespace ]),
+                    'cache'  => $this->join([ $prefix, 'Caches', $this->namespace ]),
                     'config' => $this->join([ $prefix, 'Preferences', $this->namespace ]),
-                    'log' => $this->join([ $prefix, 'Logs', $this->namespace ]),
-                    'temp' => $this->join([ sys_get_temp_dir(), $this->namespace ]),
+                    'log'    => $this->join([ $prefix, 'Logs', $this->namespace ]),
+                    'temp'   => $this->join([ sys_get_temp_dir(), $this->namespace ]),
                 ];
 
                 break;
@@ -70,21 +121,26 @@ final class EnvPaths implements ArrayAccess {
             case 'BSD':
             case 'Solaris':
                 // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+                $xdg_data_home = getenv('XDG_DATA_HOME') !== false ? getenv('XDG_DATA_HOME') : null;
+                $xdg_cache_home = getenv('XDG_CACHE_HOME') !== false ? getenv('XDG_CACHE_HOME') : null;
+                $xdg_config_home = getenv('XDG_CONFIG_HOME') !== false ? getenv('XDG_CONFIG_HOME') : null;
+                $xdg_state_home = getenv('XDG_STATE_HOME') !== false ? getenv('XDG_STATE_HOME') : null;
+
                 $this->paths = [
                     'data' => $this->join([
-                        getenv('XDG_DATA_HOME') ?? $this->join([ $shell['dir'], '.local', 'share' ]),
+                        $xdg_data_home ?? $this->join([ $this->home, '.local', 'share' ]),
                         $this->namespace,
                     ]),
                     'cache' => $this->join([
-                        getenv('XDG_CACHE_HOME') ?? $this->join([ $shell['dir'], '.cache' ]),
+                        $xdg_cache_home ?? $this->join([ $this->home, '.cache' ]),
                         $this->namespace,
                     ]),
                     'config' => $this->join([
-                        getenv('XDG_CONFIG_HOME') ?? $this->join([ $shell['dir'], '.config' ]),
+                        $xdg_config_home ?? $this->join([ $this->home, '.config' ]),
                         $this->namespace,
                     ]),
                     'log' => $this->join([
-                        getenv('XDG_STATE_HOME') ?? $this->join([ $shell['dir'], '.local', 'state' ]),
+                        $xdg_state_home ?? $this->join([ $this->home, '.local', 'state' ]),
                         $this->namespace,
                     ]),
                     'temp' => $this->join([ sys_get_temp_dir(), $this->uid, $this->namespace ]),
@@ -92,40 +148,73 @@ final class EnvPaths implements ArrayAccess {
 
                 break;
             case 'Unkown':
-            default:
                 throw new RuntimeException('Cannot set paths for unkown environment.');
-                break;
         }
     }
 
-    public function get($key): void
+    /**
+     * get
+     *
+     * @param  string $key
+     * @return mixed
+     */
+    public function get(string $key): mixed
     {
         return isset($this->paths[$key]) ? $this->paths[$key] : null;
     }
 
+    /**
+     * Cast the paths into an associative array
+     *
+     * @return array<string, string|null>
+     */
     public function toArray(): array
     {
         return $this->paths;
     }
 
+    /**
+     * Check if array offset exists
+     *
+     * @param  string $offset
+     * @return bool
+     */
     public function offsetExists($offset): bool
     {
         return isset($this->paths[$offset]);
     }
 
+    /**
+     * Get an offset
+     *
+     * @param  string $offset
+     * @return mixed
+     */
     public function offsetGet($offset): mixed
     {
         return isset($this->paths[$offset]) ? $this->paths[$offset] : null;
     }
 
+    /**
+     * Set an offset
+     *
+     * @param  string $offset
+     * @param  string  $value
+     * @return void
+     */
     public function offsetSet($offset, $value): void
     {
         $this->paths[$offset] = $value;
     }
 
+    /**
+     * Delete an offset
+     *
+     * @param  string $offset
+     * @return void
+     */
     public function offsetUnset($offset): void
     {
         unset($this->paths[$offset]);
     }
-
 }
