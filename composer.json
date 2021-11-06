@@ -1,6 +1,8 @@
 {
     "name": "bgreenacre/env-paths",
     "description": "Provides paths for where to store things like cache, configs, data etc. given the environment and user that is running the application.",
+    "homepage": "https://github.com/bgreenacre/env-paths",
+    "keywords": [ "cli", "environment", "path" ],
     "type": "library",
     "require": {
         "php": "^7.2 || ^8.0"
