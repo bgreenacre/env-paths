@@ -16,7 +16,7 @@ final class EnvPaths implements ArrayAccess
     /**
      * Contains the User's ID
      *
-     * @var string|int
+     * @var int
      */
     private $uid;
 
@@ -30,7 +30,7 @@ final class EnvPaths implements ArrayAccess
     /**
      * User home directory
      *
-     * @var string|null
+     * @var string
      */
     private $home;
 
@@ -52,15 +52,23 @@ final class EnvPaths implements ArrayAccess
      *
      * @param string|null $namespace
      * @param string      $suffix
-     * @param int|null    $uid
      */
-    public function __construct(string $namespace = null, string $suffix = '-php', int $uid = null)
+    public function __construct(string $namespace = null, string $suffix = '-php')
     {
-        $this->uid = $uid ?? posix_getuid();
-        $shell = posix_getpwuid($this->uid);
+        $this->uid = posix_getuid();
 
-        if (is_array($shell) && array_key_exists('dir', $shell)) {
-            $this->home = $shell['dir'];
+        if (! $this->uid) {
+            throw new RuntimeException('UID is required and none was found');
+        }
+
+        $env = posix_getpwuid($this->uid);
+
+        if (is_array($env) && array_key_exists('dir', $env)) {
+            $this->home = $env['dir'];
+        }
+
+        if (! $this->home) {
+            throw new RuntimeException('A home folder is required and none was found');
         }
 
         if ($namespace) {
@@ -74,11 +82,17 @@ final class EnvPaths implements ArrayAccess
      * join
      *
      * @param array<int, string|null|int>  $to_join
-     * @param string $sep
+     * @param string                       $sep
      */
     private function join(array $to_join, string $sep = DIRECTORY_SEPARATOR): string
     {
-        return array_reduce($to_join, fn($path, $part) => $part ? $path . $sep . $part : $path, '');
+        return array_reduce(
+            $to_join,
+            fn($path, $part) => $part
+                ? $path . $sep . ltrim((string) $part, $sep)
+                : $path,
+            ''
+        );
     }
 
     /**
@@ -148,7 +162,7 @@ final class EnvPaths implements ArrayAccess
 
                 break;
             case 'Unkown':
-                throw new RuntimeException('Cannot set paths for unkown environment.');
+                throw new RuntimeException('Cannot set paths for unkown environment');
         }
     }
 
@@ -208,13 +222,13 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * Delete an offset
+     * Delete an offset which is not allowed
      *
      * @param  string $offset
      * @return void
      */
     public function offsetUnset($offset): void
     {
-        unset($this->paths[$offset]);
+        throw new RuntimeException('Cannot delete array index for EnvPaths class');
     }
 }
