@@ -88,9 +88,9 @@ final class EnvPaths implements ArrayAccess
     {
         return array_reduce(
             $to_join,
-            fn($path, $part) => $part
-                ? $path . $sep . ltrim((string) $part, $sep)
-                : $path,
+            function ($path, $part) use ($sep) {
+                return $part ? $path . $sep . ltrim((string) $part, $sep) : $path;
+            },
             ''
         );
     }
