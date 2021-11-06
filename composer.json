@@ -1,12 +1,14 @@
 {
     "name": "bgreenacre/env-paths",
-    "description": "Provides paths for where to store things like chache, configs, data etc. given the environment and user that is running the application.",
+    "description": "Provides paths for where to store things like cache, configs, data etc. given the environment and user that is running the application.",
     "type": "library",
     "require": {
-        "php": "^7.2"
+        "php": "^7.2 || ^8.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "9.5.x-dev"
+        "phpunit/phpunit": "9.5.x-dev",
+        "phpstan/phpstan": "^1.1",
+        "squizlabs/php_codesniffer": "4.0.x-dev"
     },
     "license": "MIT",
     "autoload": {
@@ -20,5 +22,15 @@
             "email": "bgreenacre42@gmail.com"
         }
     ],
+    "scripts": {
+        "phpcs": "phpcs",
+        "phpstan": "phpstan analyse",
+        "phpunit": "phpunit --no-coverage",
+        "test": [
+            "@phpcs",
+            "@phpstan",
+            "@phpunit"
+        ]
+    },
     "minimum-stability": "dev"
 }
