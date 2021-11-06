@@ -172,7 +172,7 @@ final class EnvPaths implements ArrayAccess
      * @param  string $key
      * @return mixed
      */
-    public function get(string $key): mixed
+    public function get(string $key)
     {
         return isset($this->paths[$key]) ? $this->paths[$key] : null;
     }
@@ -204,7 +204,7 @@ final class EnvPaths implements ArrayAccess
      * @param  string $offset
      * @return mixed
      */
-    public function offsetGet($offset): mixed
+    public function offsetGet($offset)
     {
         return isset($this->paths[$offset]) ? $this->paths[$offset] : null;
     }
