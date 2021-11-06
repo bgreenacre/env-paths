@@ -112,6 +112,7 @@ Temporary Items
 
 /vendor/*
 /wpcs/*
+.phpcs-cache
 
 ### PHPUnit ###
 # Covers PHPUnit
