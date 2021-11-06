@@ -1,0 +1,24 @@
+{
+    "name": "bgreenacre/env-paths",
+    "description": "Provides paths for where to store things like chache, configs, data etc. given the environment and user that is running the application.",
+    "type": "library",
+    "require": {
+        "dflydev/dot-access-data": "3.x-dev"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "9.5.x-dev"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Bgreenacre\\EnvPaths\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Brian Greenacre",
+            "email": "bgreenacre42@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
