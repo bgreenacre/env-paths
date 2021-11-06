@@ -72,7 +72,7 @@ final class EnvPaths implements ArrayAccess
         }
 
         if ($namespace) {
-            $this->namespace = $namespace . $suffix;
+            $this->namespace = $namespace . '-' . ltrim($suffix, '-');
         }
 
         $this->setPaths();
