@@ -71,8 +71,9 @@ final class EnvPaths implements ArrayAccess
     /**
      * Constructor
      *
-     * @param string|null $namespace
-     * @param string      $suffix
+     * @param  string|null $namespace
+     * @param  string      $suffix
+     * @throws RuntimeException Thrown when no uid is found or when no home dir is found
      */
     public function __construct(string $namespace = null, string $suffix = '-php')
     {
@@ -204,10 +205,10 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * has
+     * Check if a key is set in the $paths array
      *
      * @param  string  $key
-     * @return boolean
+     * @return bool
      */
     public function has(string $key): bool
     {
@@ -219,7 +220,7 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * get
+     * Get a value from the $paths array by provided key
      *
      * @param  string $key
      * @return mixed
@@ -230,7 +231,7 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * Set the os
+     * Set the os prop
      *
      * @param string $os
      */
@@ -293,7 +294,7 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * Check if array offset exists
+     * Check if array offset exists $paths prop
      *
      * @param  string $offset
      * @return bool
@@ -307,7 +308,7 @@ final class EnvPaths implements ArrayAccess
      * Get an offset
      *
      * @param  string $offset
-     * @return mixed
+     * @return string|null
      */
     public function offsetGet($offset)
     {
@@ -319,6 +320,7 @@ final class EnvPaths implements ArrayAccess
      *
      * @param  string $offset
      * @param  string $value
+     * @throws RuntimeException Always thrown as $paths is immutable
      * @return void
      */
     public function offsetSet($offset, $value): void
@@ -330,6 +332,7 @@ final class EnvPaths implements ArrayAccess
      * Delete an offset which is not allowed
      *
      * @param  string $offset
+     * @throws RuntimeException Always thrown as $paths is immutable
      * @return void
      */
     public function offsetUnset($offset): void
