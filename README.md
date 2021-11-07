@@ -20,7 +20,7 @@ Usage
 Example
 
 ```php
-$paths = new Bgreenacre\EnvPaths\EnvPaths('MyApp');
+$paths = Bgreenacre\EnvPaths\EnvPaths::getPaths('MyApp');
 
 /**
  *  - macOS: `~/Library/Application Support/MyApp-php`
