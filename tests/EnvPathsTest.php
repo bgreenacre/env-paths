@@ -34,6 +34,25 @@ class EnvPathsTest extends TestCase
         foreach ($paths->toArray() as $key => $path) {
             $this->assertStringEndsWith($namespace . '-php', $path);
         }
+
+        $data = '/home/xdg_user_home/.data';
+        $cache = '/home/xdg_user_home/.cache';
+        $config = '/home/xdg_user_home/.config';
+        $log = '/home/xdg_user_home/.log';
+
+        putenv('XDG_DATA_HOME=' . $data);
+        putenv('XDG_CACHE_HOME=' . $cache);
+        putenv('XDG_CONFIG_HOME=' . $config);
+        putenv('XDG_STATE_HOME=' . $log);
+
+        $paths = new EnvPaths($namespace);
+        $paths->setOs('Linux');
+        $paths->setDirSeparator('/');
+
+        $this->assertEquals($paths['data'], $data . '/' . $namespace . '-php');
+        $this->assertEquals($paths['cache'], $cache . '/' . $namespace . '-php');
+        $this->assertEquals($paths['config'], $config . '/' . $namespace . '-php');
+        $this->assertEquals($paths['log'], $log . '/' . $namespace . '-php');
     }
 
     public function testCustomSuffix()
