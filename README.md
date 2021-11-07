@@ -7,7 +7,7 @@ Env Paths
 [![Build Status](https://img.shields.io/github/workflow/status/bgreenacre/env-paths/Tests/main.svg?style=flat-square)](https://github.com/bgreenacre/env-paths/actions?query=workflow%3ATests+branch%3Amain)
 
 Provides paths for where to store things like cache, configs, data etc. given the environment and user that is running the application.
-Heavily inspired by the [envPaths nodejs package](https://github.com/sindresorhus/env-paths)
+Heavily inspired by the [envPaths nodejs package](https://github.com/sindresorhus/env-paths) and composer's way finding home folder of the user.
 
 Requirements
 ------------

@@ -4,112 +4,79 @@ declare(strict_types=1);
 
 namespace Bgreenacre\EnvPaths;
 
-use ArrayAccess;
 use RuntimeException;
 
-/**
- * @implements ArrayAccess<string, mixed>
- */
-final class EnvPaths implements ArrayAccess
+final class EnvPaths
 {
 
     /**
-     * Contains the User's ID
+     * Get the current users ID
      *
-     * @var int
+     * @return int
      */
-    private $uid;
-
-    /**
-     * Optional namespace for paths
-     *
-     * @var string|null
-     */
-    private $namespace;
-
-    /**
-     * User home directory
-     *
-     * @var string
-     */
-    private $home;
-
-    /**
-     * Container environment paths
-     *
-     * @var array<string, string|null>
-     */
-    private $paths = [
-        'data'   => null,
-        'cache'  => null,
-        'config' => null,
-        'log'    => null,
-        'temp'   => null,
-    ];
-
-    /**
-     * The os php was built on
-     *
-     * @var string
-     */
-    private $os = PHP_OS_FAMILY;
-
-    /**
-     * String used as directory separator for paths
-     *
-     * @var string
-     */
-    private $dirSeparator = DIRECTORY_SEPARATOR;
-
-    /**
-     * Tracks if the paths have been set yet
-     *
-     * @var boolean
-     */
-    private $pathsSet = false;
-
-    /**
-     * Constructor
-     *
-     * @param  string|null $namespace
-     * @param  string      $suffix
-     * @throws RuntimeException Thrown when no uid is found or when no home dir is found
-     */
-    public function __construct(string $namespace = null, string $suffix = '-php')
+    public static function getUID(): int
     {
-        $this->uid = posix_getuid();
-
-        if (! $this->uid) {
-            throw new RuntimeException('UID is required and none was found');
+        if (\function_exists('posix_getuid')) {
+            return posix_getuid();
         }
 
-        $env = posix_getpwuid($this->uid);
+        throw new RuntimeException('Could not determine user ID');
+    }
 
-        if (is_array($env) && array_key_exists('dir', $env)) {
-            $this->home = $env['dir'];
+    /**
+     * @return bool Whether the host machine is running a Windows OS
+     */
+    public static function isWindows()
+    {
+        return \defined('PHP_WINDOWS_VERSION_BUILD');
+    }
+
+    /**
+     * @throws \RuntimeException If the user home could not reliably be determined
+     * @return string            The formal user home as detected from environment parameters
+     */
+    public static function getUserDirectory(): string
+    {
+        if (false !== ($home = getenv('HOME'))) {
+            return $home;
         }
 
-        if (! $this->home) {
-            throw new RuntimeException('A home folder is required and none was found');
+        if (self::isWindows() && false !== ($home = getenv('USERPROFILE'))) {
+            return $home;
         }
 
-        if ($namespace) {
-            $this->namespace = $namespace . '-' . ltrim($suffix, '-');
+        if (\function_exists('posix_getuid') && \function_exists('posix_getpwuid')) {
+            $info = posix_getpwuid(posix_getuid());
+
+            if (is_array($info) && isset($info['dir'])) {
+                return $info['dir'];
+            }
         }
+
+        throw new RuntimeException('Could not determine user directory');
+    }
+
+    /**
+     * @return string
+     */
+    public static function getTempDirectory(): string
+    {
+        return sys_get_temp_dir();
     }
 
     /**
      * join
      *
      * @param array<int, string|null|int>  $toJoin
+     * @param string                       $sep
      */
-    private function join(array $toJoin): string
+    public static function join(array $toJoin, string $sep = DIRECTORY_SEPARATOR): string
     {
         return array_reduce(
             $toJoin,
-            function ($path, $part) {
+            function ($path, $part) use ($sep) {
                 return $part
-                    ? $path . $this->dirSeparator . ltrim((string) $part, $this->dirSeparator)
+                    ? $path . $sep . trim((string) $part, $sep . ' ')
                     : $path;
             },
             ''
@@ -117,226 +84,79 @@ final class EnvPaths implements ArrayAccess
     }
 
     /**
-     * Sets the paths
+     * Get environment paths
+     *
+     * @param  string|null           $namespace
+     * @param  string                $suffix
+     * @return array<string, string>
      */
-    private function setPaths(): void
+    public static function getPaths(string $namespace = null, string $suffix = 'php'): array
     {
-        $this->pathsSet = true;
+        $home = self::getUserDirectory();
+        $uid  = self::getUID();
+        $temp = self::getTempDirectory();
 
-        switch ($this->os) {
+        if ($namespace !== null && $suffix !== null) {
+            $namespace = $namespace . '-' . ltrim($suffix, '-');
+        }
+
+        switch (PHP_OS_FAMILY) {
             case 'Windows':
-                $app_data = getenv('APPDATA') !== false
+                $appData = getenv('APPDATA') !== false
                     ? getenv('APPDATA')
-                    : $this->join([ $this->home, 'AppData', 'Roaming' ]);
+                    : self::join([ $home, 'AppData', 'Roaming' ]);
 
-                $local_app_data = getenv('LOCALAPPDATA') !== false
+                $localAppData = getenv('LOCALAPPDATA') !== false
                     ? getenv('LOCALAPPDATA')
-                    : $this->join([ $this->home, 'AppData', 'Local' ]);
+                    : self::join([ $home, 'AppData', 'Local' ]);
 
-                $this->paths = [
-                    'data'   => $this->join([ $local_app_data, $this->namespace, 'Data' ]),
-                    'cache'  => $this->join([ $local_app_data, $this->namespace, 'Cache' ]),
-                    'config' => $this->join([ $app_data, $this->namespace, 'Config' ]),
-                    'log'    => $this->join([ $local_app_data, $this->namespace, 'Log' ]),
-                    'temp'   => $this->join([ sys_get_temp_dir(), $this->namespace ]),
+                return [
+                    'data'   => self::join([ $localAppData, $namespace, 'Data' ]),
+                    'cache'  => self::join([ $localAppData, $namespace, 'Cache' ]),
+                    'config' => self::join([ $appData, $namespace, 'Config' ]),
+                    'log'    => self::join([ $localAppData, $namespace, 'Log' ]),
+                    'temp'   => self::join([ $temp, $namespace ]),
                 ];
-
-                break;
             case 'Darwin':
-                $prefix = $this->join([ $this->home, 'Library' ]);
+                $prefix = self::join([ $home, 'Library' ]);
 
-                $this->paths = [
-                    'data'   => $this->join([ $prefix, 'Application Support', $this->namespace ]),
-                    'cache'  => $this->join([ $prefix, 'Caches', $this->namespace ]),
-                    'config' => $this->join([ $prefix, 'Preferences', $this->namespace ]),
-                    'log'    => $this->join([ $prefix, 'Logs', $this->namespace ]),
-                    'temp'   => $this->join([ sys_get_temp_dir(), $this->namespace ]),
+                return [
+                    'data'   => self::join([ $prefix, 'Application Support', $namespace ]),
+                    'cache'  => self::join([ $prefix, 'Caches', $namespace ]),
+                    'config' => self::join([ $prefix, 'Preferences', $namespace ]),
+                    'log'    => self::join([ $prefix, 'Logs', $namespace ]),
+                    'temp'   => self::join([ $temp, $namespace ]),
                 ];
-
-                break;
             case 'Linux':
             case 'BSD':
             case 'Solaris':
                 // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-                $xdg_data_home = getenv('XDG_DATA_HOME') !== false ? getenv('XDG_DATA_HOME') : null;
-                $xdg_cache_home = getenv('XDG_CACHE_HOME') !== false ? getenv('XDG_CACHE_HOME') : null;
-                $xdg_config_home = getenv('XDG_CONFIG_HOME') !== false ? getenv('XDG_CONFIG_HOME') : null;
-                $xdg_state_home = getenv('XDG_STATE_HOME') !== false ? getenv('XDG_STATE_HOME') : null;
+                $xdgDataHome   = getenv('XDG_DATA_HOME') !== false ? getenv('XDG_DATA_HOME') : null;
+                $xdgCacheHome  = getenv('XDG_CACHE_HOME') !== false ? getenv('XDG_CACHE_HOME') : null;
+                $xdgConfigHome = getenv('XDG_CONFIG_HOME') !== false ? getenv('XDG_CONFIG_HOME') : null;
+                $xdgStateHome  = getenv('XDG_STATE_HOME') !== false ? getenv('XDG_STATE_HOME') : null;
 
-                $this->paths = [
-                    'data' => $this->join([
-                        $xdg_data_home ?? $this->join([ $this->home, '.local', 'share' ]),
-                        $this->namespace,
+                return [
+                    'data' => self::join([
+                        $xdgDataHome ?? self::join([ $home, '.local', 'share' ]),
+                        $namespace,
                     ]),
-                    'cache' => $this->join([
-                        $xdg_cache_home ?? $this->join([ $this->home, '.cache' ]),
-                        $this->namespace,
+                    'cache' => self::join([
+                        $xdgCacheHome ?? self::join([ $home, '.cache' ]),
+                        $namespace,
                     ]),
-                    'config' => $this->join([
-                        $xdg_config_home ?? $this->join([ $this->home, '.config' ]),
-                        $this->namespace,
+                    'config' => self::join([
+                        $xdgConfigHome ?? self::join([ $home, '.config' ]),
+                        $namespace,
                     ]),
-                    'log' => $this->join([
-                        $xdg_state_home ?? $this->join([ $this->home, '.local', 'state' ]),
-                        $this->namespace,
+                    'log' => self::join([
+                        $xdgStateHome ?? self::join([ $home, '.local', 'state' ]),
+                        $namespace,
                     ]),
-                    'temp' => $this->join([ sys_get_temp_dir(), $this->uid, $this->namespace ]),
+                    'temp' => self::join([ $temp, $uid, $namespace ]),
                 ];
-
-                break;
-            case 'Unkown':
-            default:
-                throw new RuntimeException('Cannot set paths for unkown environment');
-        }
-    }
-
-    /**
-     * Cast the paths into an associative array
-     *
-     * @return array<string, string|null>
-     */
-    public function toArray(): array
-    {
-        if ($this->pathsSet === false) {
-            $this->setPaths();
         }
 
-        return $this->paths;
-    }
-
-    /**
-     * Check if a key is set in the $paths array
-     *
-     * @param  string  $key
-     * @return bool
-     */
-    public function has(string $key): bool
-    {
-        if ($this->pathsSet === false) {
-            $this->setPaths();
-        }
-
-        return isset($this->paths[$key]);
-    }
-
-    /**
-     * Get a value from the $paths array by provided key
-     *
-     * @param  string $key
-     * @return mixed
-     */
-    public function get(string $key)
-    {
-        return $this->has($key) ? $this->paths[$key] : null;
-    }
-
-    /**
-     * Set the os prop
-     *
-     * @param string $os
-     */
-    public function setOs(string $os): self
-    {
-        $this->os = $os;
-        return $this;
-    }
-
-    /**
-     * Get the os prop
-     *
-     * @return string
-     */
-    public function getOs(): string
-    {
-        return $this->os;
-    }
-
-    /**
-     * Set the dirSeparator prop
-     *
-     * @param string $sep
-     */
-    public function setDirSeparator(string $sep): self
-    {
-        $this->dirSeparator = $sep;
-        return $this;
-    }
-
-    /**
-     * Get the dirSeparator prop
-     *
-     * @return string
-     */
-    public function getDirSeparator(): string
-    {
-        return $this->dirSeparator;
-    }
-
-    /**
-     * Set the home prop
-     *
-     * @param string $home
-     */
-    public function setHome(string $home): self
-    {
-        $this->home = $home;
-        return $this;
-    }
-
-    /**
-     * Get the home prop
-     *
-     * @return string
-     */
-    public function getHome(): string
-    {
-        return $this->home;
-    }
-
-    /**
-     * Check if array offset exists $paths prop
-     *
-     * @param  string $offset
-     * @return bool
-     */
-    public function offsetExists($offset): bool
-    {
-        return $this->has($offset);
-    }
-
-    /**
-     * Get an offset
-     *
-     * @param  string $offset
-     * @return string|null
-     */
-    public function offsetGet($offset)
-    {
-        return $this->has($offset) ? $this->paths[$offset] : null;
-    }
-
-    /**
-     * Set an offset
-     *
-     * @param  string $offset
-     * @param  string $value
-     * @throws RuntimeException Always thrown as $paths is immutable
-     * @return void
-     */
-    public function offsetSet($offset, $value): void
-    {
-        throw new RuntimeException('Unable to set index of immutable array for EnvPaths');
-    }
-
-    /**
-     * Delete an offset which is not allowed
-     *
-     * @param  string $offset
-     * @throws RuntimeException Always thrown as $paths is immutable
-     * @return void
-     */
-    public function offsetUnset($offset): void
-    {
-        throw new RuntimeException('Unable to unset index of immutable array for EnvPaths');
+        throw new RuntimeException('Cannot generate paths for environment');
     }
 }

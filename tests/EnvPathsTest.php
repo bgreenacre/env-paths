@@ -9,67 +9,34 @@ use PHPUnit\Framework\TestCase;
 
 class EnvPathsTest extends TestCase
 {
-    public function testSettersAndGetters()
+    public function testDefault()
     {
+        putenv('HOME=/home/test');
         $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace);
+        $paths = EnvPaths::getPaths($namespace);
 
-        $paths->setHome('this is my home');
-        $paths->setOs('ReactOS');
-        $paths->setDirSeparator('9');
-
-        $this->assertEquals('this is my home', $paths->getHome());
-        $this->assertEquals('ReactOS', $paths->getOs());
-        $this->assertEquals('9', $paths->getDirSeparator());
-    }
-
-    public function testLinux()
-    {
-        $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace);
-        $paths->setOs('Linux');
-        $paths->setDirSeparator('/');
-        $paths->setHome('/home/user');
-
-        foreach ($paths->toArray() as $key => $path) {
-            $this->assertStringEndsWith($namespace . '-php', $path);
+        foreach ($paths as $path) {
+            $this->assertStringContainsString($namespace . '-php', $path);
         }
-
-        $data = '/home/xdg_user_home/.data';
-        $cache = '/home/xdg_user_home/.cache';
-        $config = '/home/xdg_user_home/.config';
-        $log = '/home/xdg_user_home/.log';
-
-        putenv('XDG_DATA_HOME=' . $data);
-        putenv('XDG_CACHE_HOME=' . $cache);
-        putenv('XDG_CONFIG_HOME=' . $config);
-        putenv('XDG_STATE_HOME=' . $log);
-
-        $paths = new EnvPaths($namespace);
-        $paths->setOs('Linux');
-        $paths->setDirSeparator('/');
-
-        $this->assertEquals($paths['data'], $data . '/' . $namespace . '-php');
-        $this->assertEquals($paths['cache'], $cache . '/' . $namespace . '-php');
-        $this->assertEquals($paths['config'], $config . '/' . $namespace . '-php');
-        $this->assertEquals($paths['log'], $log . '/' . $namespace . '-php');
     }
 
     public function testCustomSuffix()
     {
+        putenv('HOME=/home/test');
         $suffix = 'superawesome';
         $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace, $suffix);
+        $paths = EnvPaths::getPaths($namespace, $suffix);
 
-        foreach ($paths->toArray() as $key => $path) {
-            $this->assertStringEndsWith($namespace . '-' . $suffix, $path);
+        foreach ($paths as $path) {
+            $this->assertStringContainsString($namespace . '-' . $suffix, $path);
         }
     }
 
     public function testKeysExist()
     {
+        putenv('HOME=/home/test');
         $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace);
+        $paths = EnvPaths::getPaths($namespace);
 
         $this->assertArrayHasKey('data', $paths);
         $this->assertArrayHasKey('cache', $paths);
@@ -78,23 +45,17 @@ class EnvPathsTest extends TestCase
         $this->assertArrayHasKey('temp', $paths);
     }
 
-    public function testUnsetException()
+    public function testIsWindows()
     {
-        $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unable to unset index of immutable array for EnvPaths');
-        unset($paths['log']);
+        // Compare 2 common tests for Windows to the built-in Windows test
+        $this->assertEquals(('\\' === DIRECTORY_SEPARATOR), EnvPaths::isWindows());
+        $this->assertEquals(defined('PHP_WINDOWS_VERSION_MAJOR'), EnvPaths::isWindows());
     }
 
-    public function testSetException()
+    public function testJoin()
     {
-        $namespace = 'unicorn';
-        $paths = new EnvPaths($namespace);
+        $result = EnvPaths::join(['  first ', ' second', 'last '], '|');
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unable to set index of immutable array for EnvPaths');
-        $paths['log'] = 'new value';
+        $this->assertEquals('|first|second|last', $result);
     }
 }
