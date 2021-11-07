@@ -218,7 +218,7 @@ final class EnvPaths implements ArrayAccess
      */
     public function offsetSet($offset, $value): void
     {
-        $this->paths[$offset] = $value;
+        throw new RuntimeException('Unable to set index of immutable array for EnvPaths');
     }
 
     /**
@@ -229,6 +229,6 @@ final class EnvPaths implements ArrayAccess
      */
     public function offsetUnset($offset): void
     {
-        throw new RuntimeException('Cannot delete array index for EnvPaths class');
+        throw new RuntimeException('Unable to unset index of immutable array for EnvPaths');
     }
 }

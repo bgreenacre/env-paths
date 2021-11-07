@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bgreenacre\EnvPaths;
 
+use RuntimeException;
 use PHPUnit\Framework\TestCase;
 
 class EnvPathsTest extends TestCase
@@ -39,5 +40,25 @@ class EnvPathsTest extends TestCase
         $this->assertArrayHasKey('config', $paths);
         $this->assertArrayHasKey('log', $paths);
         $this->assertArrayHasKey('temp', $paths);
+    }
+
+    public function testUnsetException()
+    {
+        $namespace = 'unicorn';
+        $paths = new EnvPaths($namespace);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to unset index of immutable array for EnvPaths');
+        unset($paths['log']);
+    }
+
+    public function testSetException()
+    {
+        $namespace = 'unicorn';
+        $paths = new EnvPaths($namespace);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unable to set index of immutable array for EnvPaths');
+        $paths['log'] = 'new value';
     }
 }
