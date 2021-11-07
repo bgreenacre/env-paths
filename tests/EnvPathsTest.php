@@ -9,10 +9,27 @@ use PHPUnit\Framework\TestCase;
 
 class EnvPathsTest extends TestCase
 {
-    public function testDefault()
+    public function testSettersAndGetters()
     {
         $namespace = 'unicorn';
         $paths = new EnvPaths($namespace);
+
+        $paths->setHome('this is my home');
+        $paths->setOs('ReactOS');
+        $paths->setDirSeparator('9');
+
+        $this->assertEquals('this is my home', $paths->getHome());
+        $this->assertEquals('ReactOS', $paths->getOs());
+        $this->assertEquals('9', $paths->getDirSeparator());
+    }
+
+    public function testLinux()
+    {
+        $namespace = 'unicorn';
+        $paths = new EnvPaths($namespace);
+        $paths->setOs('Linux');
+        $paths->setDirSeparator('/');
+        $paths->setHome('/home/user');
 
         foreach ($paths->toArray() as $key => $path) {
             $this->assertStringEndsWith($namespace . '-php', $path);

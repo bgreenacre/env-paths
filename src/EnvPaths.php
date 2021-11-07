@@ -48,7 +48,28 @@ final class EnvPaths implements ArrayAccess
     ];
 
     /**
-     * Constrctor
+     * The os php was built on
+     *
+     * @var string
+     */
+    private $os = PHP_OS_FAMILY;
+
+    /**
+     * String used as directory separator for paths
+     *
+     * @var string
+     */
+    private $dirSeparator = DIRECTORY_SEPARATOR;
+
+    /**
+     * Tracks if the paths have been set yet
+     *
+     * @var boolean
+     */
+    private $pathsSet = false;
+
+    /**
+     * Constructor
      *
      * @param string|null $namespace
      * @param string      $suffix
@@ -74,22 +95,21 @@ final class EnvPaths implements ArrayAccess
         if ($namespace) {
             $this->namespace = $namespace . '-' . ltrim($suffix, '-');
         }
-
-        $this->setPaths();
     }
 
     /**
      * join
      *
-     * @param array<int, string|null|int>  $to_join
-     * @param string                       $sep
+     * @param array<int, string|null|int>  $toJoin
      */
-    private function join(array $to_join, string $sep = DIRECTORY_SEPARATOR): string
+    private function join(array $toJoin): string
     {
         return array_reduce(
-            $to_join,
-            function ($path, $part) use ($sep) {
-                return $part ? $path . $sep . ltrim((string) $part, $sep) : $path;
+            $toJoin,
+            function ($path, $part) {
+                return $part
+                    ? $path . $this->dirSeparator . ltrim((string) $part, $this->dirSeparator)
+                    : $path;
             },
             ''
         );
@@ -100,7 +120,9 @@ final class EnvPaths implements ArrayAccess
      */
     private function setPaths(): void
     {
-        switch (PHP_OS_FAMILY) {
+        $this->pathsSet = true;
+
+        switch ($this->os) {
             case 'Windows':
                 $app_data = getenv('APPDATA') !== false
                     ? getenv('APPDATA')
@@ -162,8 +184,38 @@ final class EnvPaths implements ArrayAccess
 
                 break;
             case 'Unkown':
+            default:
                 throw new RuntimeException('Cannot set paths for unkown environment');
         }
+    }
+
+    /**
+     * Cast the paths into an associative array
+     *
+     * @return array<string, string|null>
+     */
+    public function toArray(): array
+    {
+        if ($this->pathsSet === false) {
+            $this->setPaths();
+        }
+
+        return $this->paths;
+    }
+
+    /**
+     * has
+     *
+     * @param  string  $key
+     * @return boolean
+     */
+    public function has(string $key): bool
+    {
+        if ($this->pathsSet === false) {
+            $this->setPaths();
+        }
+
+        return isset($this->paths[$key]);
     }
 
     /**
@@ -174,17 +226,70 @@ final class EnvPaths implements ArrayAccess
      */
     public function get(string $key)
     {
-        return isset($this->paths[$key]) ? $this->paths[$key] : null;
+        return $this->has($key) ? $this->paths[$key] : null;
     }
 
     /**
-     * Cast the paths into an associative array
+     * Set the os
      *
-     * @return array<string, string|null>
+     * @param string $os
      */
-    public function toArray(): array
+    public function setOs(string $os): self
     {
-        return $this->paths;
+        $this->os = $os;
+        return $this;
+    }
+
+    /**
+     * Get the os prop
+     *
+     * @return string
+     */
+    public function getOs(): string
+    {
+        return $this->os;
+    }
+
+    /**
+     * Set the dirSeparator prop
+     *
+     * @param string $sep
+     */
+    public function setDirSeparator(string $sep): self
+    {
+        $this->dirSeparator = $sep;
+        return $this;
+    }
+
+    /**
+     * Get the dirSeparator prop
+     *
+     * @return string
+     */
+    public function getDirSeparator(): string
+    {
+        return $this->dirSeparator;
+    }
+
+    /**
+     * Set the home prop
+     *
+     * @param string $home
+     */
+    public function setHome(string $home): self
+    {
+        $this->home = $home;
+        return $this;
+    }
+
+    /**
+     * Get the home prop
+     *
+     * @return string
+     */
+    public function getHome(): string
+    {
+        return $this->home;
     }
 
     /**
@@ -195,7 +300,7 @@ final class EnvPaths implements ArrayAccess
      */
     public function offsetExists($offset): bool
     {
-        return isset($this->paths[$offset]);
+        return $this->has($offset);
     }
 
     /**
@@ -206,14 +311,14 @@ final class EnvPaths implements ArrayAccess
      */
     public function offsetGet($offset)
     {
-        return isset($this->paths[$offset]) ? $this->paths[$offset] : null;
+        return $this->has($offset) ? $this->paths[$offset] : null;
     }
 
     /**
      * Set an offset
      *
      * @param  string $offset
-     * @param  string  $value
+     * @param  string $value
      * @return void
      */
     public function offsetSet($offset, $value): void
