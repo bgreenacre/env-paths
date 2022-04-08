@@ -8,7 +8,6 @@ use RuntimeException;
 
 final class EnvPaths
 {
-
     /**
      * Get the current users ID
      *
