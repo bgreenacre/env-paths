@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are **welcome** and will be fully **credited**. We accept contributions via Pull Requests on [GitHub](https://github.com/dflydev/dflydev-dot-access-data).
+Contributions are **welcome** and will be fully **credited**. We accept contributions via Pull Requests on [GitHub](https://github.com/bgreenacre/env-paths).
 
 ## Pull Requests
 
